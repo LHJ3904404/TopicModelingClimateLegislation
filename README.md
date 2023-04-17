@@ -6,4 +6,4 @@ The data used is files that I could transform easily from pdf to text so there i
 
 The goal of the study is to understand the main strategies of climate legislation in non-OECD countries, and those as lower to middle-income status. 
 
-The Analysis primarily uses the packages STM and Quatneda in R. 
+The Analysis primarily uses the packages STM and Quanteda in R. 
