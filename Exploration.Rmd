@@ -357,6 +357,27 @@ summary(topic_model1.1)
 
 selctm1.1<-selectModel(dfm1, K=20, max.em.its = 75, data = dfm1metadata, runs = 20, init.type = "Spectral")
 
-### Is it better to remove the 
+### Is it better to remove the sustainability words?
+
+```{r}
+
+# modeling
+
+#. model1.1<-stm(documents = dfm1, K = 5, max.em.its = 75, data = dfm1metadata, init.type = "Spectral")
+
+
+# saveRDS(model1.1, file = "Data/model1_1.rds")
+model1.1 <- readRDS("Data/model1_1.rds")
+
+#topic_model1.1<-stm(dfm1, K = 20, verbose = F, init.type = "Spectral")
+
+summary(topic_model1.1)
+
+#selctm1.1<-selectModel(dfm1, K=20, max.em.its = 75, data = dfm1metadata, runs = 20, init.type = "Spectral")
+
+#saveRDS(selctm1.1, file = "Data/selctm1_1.rds")
+selectm1.1 <- readRDS("Data/selctm1_1.rds")
+
+```
 
 
