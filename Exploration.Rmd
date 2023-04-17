@@ -380,4 +380,28 @@ selectm1.1 <- readRDS("Data/selctm1_1.rds")
 
 ```
 
+# Plotting the models and seeing results
+# Running into issues with plotting summarizing the model. Advice on how to work with this would be greatly appreciated. 
+```{r}
+
+Firstexploration<-plot(
+        selectm1.1,
+      type = hist,
+      n = 10,
+      topics = NULL,
+      labeltype = frex,
+      frexw = 0.5,
+      main = "First Topic Model",
+      xlim = NULL,
+      ylim = NULL,
+      xlab = "Frex Score",
+      ylab = "Topics"
+)
+
+summary(selectm1.1)
+
+
+
+
+```
 
