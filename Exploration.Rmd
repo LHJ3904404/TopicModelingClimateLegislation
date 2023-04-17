@@ -1,0 +1,432 @@
+---
+title: "Thesiscode"
+author: '219993'
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+ chunk like this:
+
+```{r cars}
+library(janitor)
+library(dplyr)
+library(quanteda)
+library(tidyr)
+library(readxl)
+library(ggplot2)
+library(stm)
+library(Matrix)
+library(stringr)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+# Please ignore this as this is what I used for creating my orignal dataframe with the text included. 
+
+```{r pressure, echo=FALSE}
+#plot(pressure)
+
+# Cleaning orginal doucment. Removing OECD- countires
+
+#raw_cldf<-read.csv("Data/laws_and_policies_01042023.csv", header = T, na.strings = c("", "NA"))
+#colnames(raw_cldf)
+#clean_cldf<-raw_cldf %>% clean_names()
+
+#colnames(clean_cldf)
+
+#working_df<-clean_cldf %>% select(id, title, geography, geography_iso, document_types, sectors,events,documents, description)
+
+
+#sum(is.na(working_df$documents))
+
+#working_df<-na.omit(working_df)
+
+#NON_OECD_DF<-subset(working_df, geography != "New Zealand" & geography != "Australia" & geography != "Chile" & 
+                     geography != "Colombia" &
+                     geography != "Costa Rica" &
+                     geography !=  "Israel" &
+                     geography != "Mexico" &
+                     geography !=  "Slovenia" &
+                     geography != "Estonia" &
+                     geography !=  "Japan" &
+                     geography != "Hong Kong" &
+                     geography != "South Korea" &
+                     geography != "North Korea"
+                     )
+
+#write.csv(NON_OECD_DF, "Non_OECD.csv")
+
+#Non_OECD_working<- NON_OECD_DF %>% select(id, title, geography, geography_iso,events,documents, description)
+
+#write.csv(Non_OECD_working, "WorkingDF.csv")
+
+#tabyl(working_df$geography)
+
+
+
+
+
+
+```
+
+```{r}
+
+library(stm)
+
+workingdf<-read_excel("Data/WorkingDFEXCEL.xlsx")
+
+
+
+clean_cldf<-workingdf %>% clean_names()
+
+colnames(clean_cldf)
+
+working_df<-clean_cldf %>% 
+  dplyr::select(id, title, geography,document,events)
+
+
+sum(is.na(working_df$documents))
+
+working_df<-na.omit(working_df)
+
+write.csv(working_df, "Thesisdata.csv")
+
+```
+
+```{r}
+###### Working with Updated Text Data frame. 
+
+df<-read.csv("Data/Thesisdata.csv", header = T,stringsAsFactors = F, na.strings = c("", "NA"))
+
+dat_leg<-read.csv("Data/Thesisdata.csv")
+names(dat_leg) 
+
+# Chaning event document to year documents. 
+
+dat_leg<-dat_leg %>% 
+  mutate(year = str_extract(events, "\\d{4}" )) 
+
+dat_leg<-dat_leg %>% 
+  dplyr::select(id, title, geography,document,year)
+
+dat_leg$geography<-factor(dat_leg$geography)
+dat_leg$year<-factor(dat_leg$year)
+
+
+
+```
+
+
+Is this Necessary to do? And how can I split it better?
+
+```{r}
+
+dat_leg$length<- nchar(dat_leg$document)# Using base we are adding a column that evaluates the length of the documents. 
+
+df_sorted<-dat_leg[order(dat_leg$length), ]
+
+num_docs<- nrow(dat_leg)
+
+
+
+#Splitting the dataframe into two sets will be names testing and training. 
+
+Dat_trianing<-data.frame()
+
+Dat_test<-data.frame()
+
+for (i in 1:num_docs) {
+  # assign the current row to the subset with the shorter total document length
+  
+  if (sum(nchar(Dat_trianing$document)) <= sum(nchar(Dat_test$document))) {
+    Dat_trianing <- rbind(Dat_trianing, df_sorted[i, ])
+  } else {
+    Dat_test <- rbind(Dat_test, df_sorted[i, ])
+  }
+}
+
+# Visual check to see if the variance for the sets are similar
+
+histtest<- hist(Dat_trianing$length, breaks = 20, main = "Histogram of Document lengths", xlab = "Length of Documents")
+
+histtrain<-hist(Dat_test$length, breaks = 20, main = "Histogram of Document lengths", xlab = "Length of Documents")
+
+# to check that documents were not placed in both data sets. 
+Dat_trianing$document[5]
+
+Dat_test$document[5]
+
+
+
+```
+
+
+This processing each of the data sets in the same way and setting up the coprus that includes the metadata. 
+
+```{r}
+
+corp_test<- corpus(Dat_test, text_field = "document") # Creating a coprpus
+
+  
+corp_training<- corpus(Dat_trianing, text_field = "document")# Creating a coprpus
+
+
+```
+
+
+# This chunk is the processing segment of both sets. 
+
+``` {r}
+
+
+# creating doc ids to be used in processing.
+docidTrain<-paste(Dat_trianing$title, 
+             Dat_trianing$geography,
+             Dat_trianing$year,
+             Dat_trianing$length
+             )
+docnames(corp_training)<-docidTrain
+
+print(corp_training, 4)
+
+docidTest<-paste(Dat_test$title,  
+             Dat_test$geography,
+             Dat_test$year,
+             Dat_test$length
+             )
+docnames(corp_test)<-docidTest
+
+print(corp_test, 4)
+
+#### Document level Variables
+
+corp1<- corp_training
+  head(docvars(corp1))
+  
+docvars(corp1, field = "year")
+
+corp2<-corp_test
+  head(docvars(corp2))
+
+docvars(corp2, field = "year")
+
+docvars(corp1, field = "length")
+
+
+
+traininghist<-hist(corp1$length, breaks = 20, main = "Histogram of  Traing set Document lengths", xlab = "Length of Documents")
+
+testhist<-hist(corp2$length, breaks = 20, main = "Histogram of Test set Document lengths", xlab = "Length of Documents")
+
+ndoc(corp1)
+
+ndoc(corp2)
+
+```
+
+# SUBSET Corpus
+
+```{r}
+
+corp1_para<-corpus_reshape(corp1, to = "paragraphs")
+print(corp1_para, 5)
+
+corp2_para<-corpus_reshape(corp2, to = "paragraphs")
+print(corp2_para, 5)
+
+
+ndoc(corp1_para) # This may be problematic with the training if there are over a thousand more docuemnts now
+
+ndoc(corp2_para)
+
+
+#### Construct A token Object 
+
+toks1<-tokens(corp1)
+toks1<-tokens(corp2)
+
+
+toks1_para<-tokens(corp1_para)
+
+toks2_para<-tokens(corp2_para)
+
+## toks with dcoument as is  - removal of punctuaion, symbols, numbers, and seperators, including the padding so the features positions do not change inside the text 
+toks1_nopunct<- tokens(corp1, remove_punct = TRUE, remove_symbols = TRUE, remove_numbers = T, remove_separators = T, padding = T)
+
+toks2_nopunct<- tokens(corp2, remove_punct = TRUE, remove_symbols = TRUE, remove_numbers = T, remove_separators = T, padding = T)
+
+toks1_nopunct<-tokens_select(toks1_nopunct, pattern = stopwords("en"), selection = "remove", padding = T)
+
+toks2_nopunct<-tokens_select(toks2_nopunct, pattern = stopwords("en"), selection = "remove", padding = T)
+
+#toks with corp split as a paragraph
+
+
+toks1_nopunctPara<- tokens(corp1_para, remove_punct =  TRUE, remove_symbols = TRUE, remove_numbers = T, remove_separators = T, padding = T)
+
+toks2_nopunctPara<- tokens(corp2_para, remove_punct =  TRUE, remove_symbols = TRUE, remove_numbers = T, remove_separators = T, padding = T)
+
+toks1_nopunctPara<-tokens_select(toks1_nopunctPara, pattern = stopwords("en"), selection = "remove", padding = T)
+
+toks2_nopunctPara<-tokens_select(toks2_nopunctPara, pattern = stopwords("en"), selection = "remove", padding = T)
+
+# Stemmed tokens - command uses the snowball stemming algorithm
+
+Stemed1<-tokens_wordstem(toks1_nopunct, language = quanteda_options("language_stemmer"))
+
+
+Stemed2<-tokens_wordstem(toks2_nopunct, language = quanteda_options("language_stemmer"))
+
+# Paragraph split
+StemedPara1<-tokens_wordstem(toks1_nopunctPara, language = quanteda_options("language_stemmer"))
+
+StemedPara2<-tokens_wordstem(toks2_nopunctPara, language = quanteda_options("language_stemmer"))
+
+
+print(toks1_nopunct, 2)
+
+### creating a DFM to be used in STM
+dfm1<-dfm(Stemed1)
+
+#Extracts the meta data using docvars so you can add it to the stm model after conversion and you do not lose it. 
+dfm1metadata<-docvars(dfm1)
+
+print(dfm1metadata, 4)
+
+print(dfm1)
+#docvars(dfm1) <- Dat_trianing[, c("title","geography", "year", "length")] ### Shouw I weight this?
+#Checking to see the docvars added as creation of the dfm can extract the doucments from the metadata. This is to ensure that it is kept together. 
+
+
+dfm2<-dfm(Stemed2)
+dfm2metadata<-docvars(dfm2)
+
+
+dfmPara1<-dfm(StemedPara1)
+dfmPara1metadata<-docvars(dfmPara1)
+
+dfmPara2<-dfm(StemedPara2)
+dfmPara2metadata<-docvars(dfmPara2)
+
+
+
+```
+
+
+#STM set up
+```{r}
+## STM model processing of the data, and creating model off of the training dataset
+
+library(stm)
+
+# convert dfms (document feature matrix) to be reable by stm
+
+stm1 <- convert(dfm1, to = "stm")
+print(attributes(stm1)$meta)  
+  
+  #documents = convert(dfm1, to = "stm", remove_punct = TRUE),
+#              vocab = colnames(dfm1),
+#              metadata = )
+
+model1.1<-stm(documents = dfm1, K = 5, max.em.its = 75, data = dfm1metadata, init.type = "Spectral")
+
+model1.1slect<- selectModel(dfm1$document, K = 20, max.em.its = 75, data = dfm1metadata, runs = 20, init.type = "Spectral")
+
+
+stmpara1<- convert(dfmPara1)
+
+metadata1<-cbind(dfm1$id, dfm1$title, dfm1$geography, dfm1$year)
+
+```
+# Here I am trying to create a model only using the dfm because everytime I convert it to an stm file to be used it leaves the metadata behind. I am trying to solve for that but using the dfm as is seems to be the only thing that is working. 
+```{r}
+
+# modeling
+
+topic_model1.1<-stm(dfm1, K = 20, verbose = F, init.type = "Spectral")
+
+summary(topic_model1.1)
+
+selctm1.1<-selectModel(dfm1, K=20, max.em.its = 75, data = dfm1metadata, runs = 20, init.type = "Spectral")
+
+### Is it better to remove the 
+
+
+
+
+
+
+```
+
+# This is the code from our old assignemnt
+```{r}
+
+
+### Estimating model 1 with a threshold of 15
+out2<-prepDocuments(my_prep$documents, my_prep$vocab, my_prep$meta, lower.thresh = 15)
+
+## Estimation with topical prevalence
+
+LegPrevfit<-stm(documents = , vocab = vocab, K =20, prevalence = s(3,10), max.em.its = 75, data = meta1, init.type = "Spectral")
+
+nrow()
+
+
+```
+
+```{r}
+
+working_df %>% 
+  nrow() %>% 
+  kable(col.names = "Number of texts") %>% 
+  kable_styling()
+```
+
+
+```{r}
+raw_df %>% 
+  group_by(year) %>% 
+  count
+
+```
+
+```{r}
+pattern <- "(\\b\\w*[Cc]limate\\w*\\b)"
+speeches <- raw_df$text
+list <- speeches %>% 
+  str_extract_all(pattern) %>% 
+  unlist() 
+list %>% 
+  table() %>% 
+  kable(caption = "Frequency of words containing 'climate'")%>%  kable_styling()
+```
+
+
+```{r}
+climate_df <- filter(raw_df, !grepl("(\\b\\w*[Cc]limate\\w*\\b)",text))
+climate_count_df <- climate_df %>% 
+  group_by(year) %>% 
+  count
+climate_count_df %>% 
+  ggplot(aes(year, n))+
+  geom_col() +
+  labs(x = "Year",
+       y = "Number of speeches mentioning 'climate'",
+       title ="Frequency of speeches about 'climate'")
+## COMMENT:
+# I think there is a bug in here somwhere
+
+```
+
+
+
+
+# Learning code to add in insights later
