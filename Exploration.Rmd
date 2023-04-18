@@ -81,23 +81,23 @@ You can also embed plots, for example:
 
 library(stm)
 
-workingdf<-read_excel("Data/WorkingDFEXCEL.xlsx")
+#workingdf<-read_excel("Data/WorkingDFEXCEL.xlsx")
 
 
 
-clean_cldf<-workingdf %>% clean_names()
+#clean_cldf<-workingdf %>% clean_names()
 
-colnames(clean_cldf)
+#colnames(clean_cldf)
 
-working_df<-clean_cldf %>% 
-  dplyr::select(id, title, geography,document,events)
+#working_df<-clean_cldf %>% 
+ # dplyr::select(id, title, geography,document,events)
 
 
-sum(is.na(working_df$documents))
+#sum(is.na(working_df$documents))
 
-working_df<-na.omit(working_df)
+#working_df<-na.omit(working_df)
 
-write.csv(working_df, "Thesisdata.csv")
+#write.csv(working_df, "Thesisdata.csv")
 
 ```
 
@@ -155,9 +155,9 @@ for (i in 1:num_docs) {
 
 # Visual check to see if the variance for the sets are similar
 
-histtest<- hist(Dat_trianing$length, breaks = 20, main = "Histogram of Document lengths", xlab = "Length of Documents")
+#histtest<- hist(Dat_trianing$length, breaks = 20, main = "Histogram of Document lengths", xlab = "Length of Documents")
 
-histtrain<-hist(Dat_test$length, breaks = 20, main = "Histogram of Document lengths", xlab = "Length of Documents")
+#histtrain<-hist(Dat_test$length, breaks = 20, main = "Histogram of Document lengths", xlab = "Length of Documents")
 
 # to check that documents were not placed in both data sets. 
 Dat_trianing$document[5]
@@ -316,6 +316,16 @@ dfmPara1metadata<-docvars(dfmPara1)
 dfmPara2<-dfm(StemedPara2)
 dfmPara2metadata<-docvars(dfmPara2)
 
+#### stemmed to remove words such as * enviro*, clima*, ans sutai*
+
+dfmN1M<-dfm_remove(dfm1, pattern = c("enviro*", "clima*", "sustai*"))
+
+dfmN2m<-dfm_remove(dfm2, pattern = c("enviro*", "clima*", "sustai*"))
+
+dfmNP1M<-dfm_remove(dfmPara1, pattern = c("enviro*", "clima*", "sustai*"))
+
+dfmNP2M<-dfm_remove(dfmPara2, pattern = c("enviro*", "clima*", "sustai*"))
+
 
 
 ```
@@ -325,77 +335,107 @@ dfmPara2metadata<-docvars(dfmPara2)
 ```{r}
 ## STM model processing of the data, and creating model off of the training dataset
 
-library(stm)
 
 # convert dfms (document feature matrix) to be reable by stm
 
-stm1 <- convert(dfm1, to = "stm")
-print(attributes(stm1)$meta)  
   
   #documents = convert(dfm1, to = "stm", remove_punct = TRUE),
 #              vocab = colnames(dfm1),
 #              metadata = )
 
-model1.1<-stm(documents = dfm1, K = 5, max.em.its = 75, data = dfm1metadata, init.type = "Spectral")
-
-model1.1slect<- selectModel(dfm1$document, K = 20, max.em.its = 75, data = dfm1metadata, runs = 20, init.type = "Spectral")
 
 
-stmpara1<- convert(dfmPara1)
 
-metadata1<-cbind(dfm1$id, dfm1$title, dfm1$geography, dfm1$year)
+
 
 ```
 # Here I am trying to create a model only using the dfm because everytime I convert it to an stm file to be used it leaves the metadata behind. I am trying to solve for that but using the dfm as is seems to be the only thing that is working. 
 ```{r}
-
 # modeling
 
-topic_model1.1<-stm(dfm1, K = 20, verbose = F, init.type = "Spectral")
+ #model1.1<-stm(documents = dfm1, K = 5, max.em.its = 75, data = dfm1metadata, init.type = "Spectral")
+#saveRDS(model1.1, file = "Data/model1_1.rds")
+model1.1 <- readRDS("Models/model1_1.rds")
 
-summary(topic_model1.1)
-
-selctm1.1<-selectModel(dfm1, K=20, max.em.its = 75, data = dfm1metadata, runs = 20, init.type = "Spectral")
-
-### Is it better to remove the sustainability words?
-
-```{r}
-
-# modeling
-
-#. model1.1<-stm(documents = dfm1, K = 5, max.em.its = 75, data = dfm1metadata, init.type = "Spectral")
-
-
-# saveRDS(model1.1, file = "Data/model1_1.rds")
-model1.1 <- readRDS("Data/model1_1.rds")
-
-#topic_model1.1<-stm(dfm1, K = 20, verbose = F, init.type = "Spectral")
-
-summary(topic_model1.1)
+# # 
 
 #selctm1.1<-selectModel(dfm1, K=20, max.em.its = 75, data = dfm1metadata, runs = 20, init.type = "Spectral")
-
 #saveRDS(selctm1.1, file = "Data/selctm1_1.rds")
-selectm1.1 <- readRDS("Data/selctm1_1.rds")
+selectm1.1 <- readRDS("Models/selctm1_1.rds")
+
+```
+
+### Modeling with Paragraphs
+```{r}
+
+#modelP1.1<-stm(documents = dfmPara1, K = 5, max.em.its = 75, data = dfmPara1metadata, init.type = "Spectral")
+
+#saveRDS(modelP1.1, file = "Data/modelP1.1.rds")
+modelP1.1 <- readRDS("Models/modelP1.1.rds")
+
+# ## 20 runs model 
+
+#selectP1.1<-selectModel(dfmPara1, K=20, max.em.its = 75, data = dfmPara1metadata, runs = 20, init.type = "Spectral")
+
+#saveRDS(selectP1.1, file = "Data/selectP1.1.rds")
+selectP1.1 <- readRDS("Models/selectP1.1.rds")
+
+
+
+```
+
+#### Models run without climate wording. 
+```{r}
+
+#NoCliModel1.1<-stm(dfmN1M, K=5, verbose = F, max.em.its = 75, data = dfm1metadata, init.type = "Spectral")
+
+#saveRDS(NoCliModel1.1, file = "Data/NoCliModel1_1.rds")
+NoCliModel1.1 <- readRDS("Models/NoCliModel1_1.rds")
+
+# #
+
+#NoCliSelectM1.1<-selectModel(dfmN1M, K=20, verbose = F, max.em.its = 75, data = dfm1metadata, runs = 20, init.type = "Spectral")
+
+#saveRDS(NoCliSelectM1.1, file = "Data/NoCliSelectM1_1.rds")
+NoCliSelectM1.1 <- readRDS("Models/NoCliSelectM1_1.rds")
+
+## Paragraphs
+
+#NoCliModelP1.1<- stm(dfmNP1M,  K=5, max.em.its = 75, data = dfmPara1metadata, init.type = "Spectral")
+
+#saveRDS(NoCliModelP1.1, file = "Data/NoCliModelP1_1.rds")
+NoCliModelP1.1 <- readRDS("Models/NoCliModelP1_1.rds")
+
+# #
+
+#NoCliSelectPM1.1<-selectModel(dfmNP1M, K=20, verbose = F, max.em.its = 75, data = dfmPara1metadata, runs = 20, init.type = "Spectral")
+
+#saveRDS(NoCliSelectPM1.1, file = "Data/NoCliSelectPM1_1.rds")
+NoCliSelectPM1.1 <- readRDS("Models/NoCliSelectPM1_1.rds")
+
+
+
 
 ```
 
 # Plotting the models and seeing results
-# Running into issues with plotting summarizing the model. Advice on how to work with this would be greatly appreciated. 
 ```{r}
 
+
+### Running into issues with plotting summarizing the model. Advice on how to work with this would be greatly appreciated. 
+
 Firstexploration<-plot(
-        selectm1.1,
-      type = hist,
-      n = 10,
-      topics = NULL,
-      labeltype = frex,
-      frexw = 0.5,
-      main = "First Topic Model",
-      xlim = NULL,
-      ylim = NULL,
-      xlab = "Frex Score",
-      ylab = "Topics"
+       model1.1,
+       
+  type = "hist",
+  n = 7,
+  labeltype = "frex",
+  frexw = 0.5,
+  main = "First Topic Model",
+  xlim = NULL,
+  ylim = c(0,1), 
+  xlab = "Topics",
+  ylab = "Frex Score"
 )
 
 summary(selectm1.1)
@@ -405,3 +445,67 @@ summary(selectm1.1)
 
 ```
 
+# This is the code from our old assignemnt
+```{r}
+
+
+### Estimating model 1 with a threshold of 15
+out2<-prepDocuments(my_prep$documents, my_prep$vocab, my_prep$meta, lower.thresh = 15)
+
+## Estimation with topical prevalence
+
+LegPrevfit<-stm(documents = , vocab = vocab, K =20, prevalence = s(3,10), max.em.its = 75, data = meta1, init.type = "Spectral")
+
+nrow()
+
+
+```
+
+```{r}
+
+working_df %>% 
+  nrow() %>% 
+  kable(col.names = "Number of texts") %>% 
+  kable_styling()
+```
+
+
+```{r}
+raw_df %>% 
+  group_by(year) %>% 
+  count
+
+```
+
+```{r}
+pattern <- "(\\b\\w*[Cc]limate\\w*\\b)"
+speeches <- raw_df$text
+list <- speeches %>% 
+  str_extract_all(pattern) %>% 
+  unlist() 
+list %>% 
+  table() %>% 
+  kable(caption = "Frequency of words containing 'climate'")%>%  kable_styling()
+```
+
+
+```{r}
+climate_df <- filter(raw_df, !grepl("(\\b\\w*[Cc]limate\\w*\\b)",text))
+climate_count_df <- climate_df %>% 
+  group_by(year) %>% 
+  count
+climate_count_df %>% 
+  ggplot(aes(year, n))+
+  geom_col() +
+  labs(x = "Year",
+       y = "Number of speeches mentioning 'climate'",
+       title ="Frequency of speeches about 'climate'")
+## COMMENT:
+# I think there is a bug in here somwhere
+
+```
+
+
+
+
+# Learning code to add in insights later
