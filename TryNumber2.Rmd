@@ -1,0 +1,339 @@
+---
+title: "Data Analysis 2"
+author: '219993'
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+
+```{r cars}
+library(janitor)
+library(dplyr)
+library(quanteda)
+library(tidyr)
+library(readxl)
+library(ggplot2)
+library(stm)
+library(Matrix)
+library(stringr)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+
+```{r}
+###### Working with Updated Text Data frame. 
+
+df<-read.csv("Data/Thesisdata.csv", header = T,stringsAsFactors = F, na.strings = c("", "NA"))
+
+dat_leg<-read.csv("Data/Thesisdata.csv")
+names(dat_leg) 
+
+# Changing event document to year documents. 
+
+dat_leg<-dat_leg %>% 
+  mutate(year = str_extract(events, "\\d{4}" )) 
+
+dat_leg<-dat_leg %>% 
+  dplyr::select(id, title, geography,document,year)
+
+dat_leg$geography<-factor(dat_leg$geography)
+dat_leg$year<-as.integer(dat_leg$year)
+
+```
+
+Is this Necessary to do? And how can I split it better?
+
+```{r}
+
+#dat_leg$length<- nchar(dat_leg$document)# Using base we are adding a column that evaluates the length of the documents. 
+
+#df_sorted<-dat_leg[order(dat_leg$length), ]
+
+#num_docs<- nrow(dat_leg)
+
+
+
+#Splitting the dataframe into two sets will be names testing and training. 
+
+#Dat_trianing<-data.frame()
+
+#Dat_test<-data.frame()
+
+#for (i in 1:num_docs) {
+  # assign the current row to the subset with the shorter total document length
+  
+  #if (sum(nchar(Dat_trianing$document)) <= sum(nchar(Dat_test$document))) {
+   # Dat_trianing <- rbind(Dat_trianing, df_sorted[i, ])
+ # } else {
+   # Dat_test <- rbind(Dat_test, df_sorted[i, ])
+ # }
+#}
+
+# Visual check to see if the variance for the sets are similar
+
+#histtest<- hist(Dat_trianing$length, breaks = 20, main = "Histogram of Document lengths", xlab = "Length of Documents")
+
+#histtrain<-hist(Dat_test$length, breaks = 20, main = "Histogram of Document lengths", xlab = "Length of Documents")
+
+# to check that documents were not placed in both data sets. 
+#Dat_trianing$document[5]
+
+#Dat_test$document[5]
+
+
+
+```
+
+
+This processing each of the data sets in the same way and setting up the coprus that includes the metadata. 
+
+```{r}
+
+corp<- corpus(dat_leg, text_field = "document") # Creating a coprpus
+
+  
+#corp_training<- corpus(Dat_trianing, text_field = "document")# Creating a coprpus
+
+
+```
+
+
+# This chunk is the processing segment of both sets. 
+
+``` {r}
+
+
+# creating doc ids to be used in processing.
+docid<-paste(dat_leg$title, 
+             dat_leg$geography,
+             dat_leg$year,
+             dat_leg$length
+             )
+docnames(corp)<-docid
+
+print(corp_training, 4)
+
+docidTest<-paste(Dat_test$title,  
+             Dat_test$geography,
+             Dat_test$year,
+             Dat_test$length
+             )
+docnames(corp_test)<-docidTest
+
+```
+
+
+Creating the model and doing processing without quanteda
+Prepare
+```{r}
+
+
+processed1 <- textProcessor(dat_leg$document,removestopwords = T, removenumbers = T, removepunctuation = T, stem = T, customstopwords = c("sustain\\w*", "clima\\w*", "enviro\\w*", "shall", "will"), metadata=dat_leg)
+
+out <- prepDocuments(processed1$documents, processed1$vocab, processed1$meta, lower.thresh = 40, upper.thresh = )
+docs <- out$documents
+vocab <- out$vocab
+meta <- out$meta
+
+plotRemoved(processed1$documents, lower.thresh = seq(from=10, to = 200, by = 10))
+
+
+
+```
+
+
+Estimate and Evaluate
+```{r}
+
+stm1 <- stm(documents = out$documents, vocab=out$vocab, K=20, data=out$meta)
+
+saveRDS(stm1, file = "Models/stm1.rds")
+stm1<- readRDS("Models/stm1.rds")
+
+plot(stm1)
+
+
+
+##
+# Evaluating terms in each topics
+
+labelTopics(stm1,topics = c(1:20), n=5)
+
+#Saving the top 20 feautres across topics and forms of weighing
+labels<-labelTopics(stm1, n=20)
+
+#only keep FREX weighting
+topwords<-data.frame("features" = t(labels$frex))
+# Assigneing topic number as colunm name
+colnames(topwords)<-paste("Topics", c(1:7))
+
+## Return the result 
+topwords[1:7]
+
+### Using searchK function to find the best number of topics
+
+K<-c(5,7,9,8,10)
+
+fit<- searchK(documents = out$documents, vocab=out$vocab, K=K, data=out$meta, verbose =F)
+
+#create a graph
+plot<-data.frame("K" = K, 
+                 "Coherence" = unlist(fit$results$semcoh), 
+                 "Exclusivity" = unlist(fit$results$exclus))
+
+# Reshape to long format 
+library("reshape2")
+
+plot<-melt(plot, id=c("K")) #
+plot# This shows that while we have more exclusivity with more topics we have less sematic coherence with the topics as they increase. 
+```
+
+Find the interpret ability and relevance of topics - how many of these topics are easy to understand and interpret. We ar making models of each K value seperately - 5, 7, 9, 10
+```{r}
+model_5K<-stm(documents = out$documents, vocab=out$vocab, K=5, data=out$meta, verbose =F)
+
+model_7K<-stm(documents = out$documents, vocab=out$vocab, K=7, data=out$meta, verbose =F)
+
+
+model_9K<-stm(documents = out$documents, vocab=out$vocab, K=9, data=out$meta, verbose =F)
+
+model_10K<-stm(documents = out$documents, vocab=out$vocab, K=10, data=out$meta, verbose =F)
+
+#for K = 5
+topics_5 <- labelTopics(model_5K, n=10)
+topics_5 <- data.frame("features" = t(topics_5$frex))
+colnames(topics_5) <- paste("Topics", c(1:5))
+topics_5
+
+#for K = 7
+topics_7 <- labelTopics(model_7K, n=10)
+topics_7 <- data.frame("features" = t(topics_7$frex))
+colnames(topics_7) <- paste("Topics", c(1:7))
+topics_7
+
+#for K = 9
+topics_9 <- labelTopics(model_9K, n=10)
+topics_9 <- data.frame("features" = t(topics_9$frex))
+colnames(topics_9) <- paste("Topics", c(1:9))
+topics_9
+
+#for K = 10
+
+topics_10 <- labelTopics(model_10K, n=10)
+topics_10 <- data.frame("features" = t(topics_10$frex))
+colnames(topics_10) <- paste("Topics", c(1:10))
+topics_10
+
+### 8 topics may be the best, so adding to the mix and running 
+
+
+model_8K<-stm(documents = out$documents, vocab=out$vocab, K=8, data=out$meta, verbose =F)
+
+topics_8 <- labelTopics(model_8K, n=10)
+topics_8 <- data.frame("features" = t(topics_8$frex))
+colnames(topics_8) <- paste("Topics", c(1:8))
+topics_8
+
+
+## FindingThougth() to be sued to return aticles by relying on dtm, to return a single doucment representative for the first topci that we assume to deal with the topic we are naming. - top documents 
+
+findThoughts(model_8K, dat_leg$document, topics=7, n=1)
+
+## 3rd criteria for assesiing the bumber of topics is the Rank-1 metric- aka how many documents a topic is the most important topic ( highe conditional probability of being prevalane than any other topics) We assing each doucment exabtly one main topic that is most prevalent 
+
+
+theta_8K <- make.dt(model_8K)
+theta_9K <- make.dt(model_9K)
+
+#First, we generate an empty data frame for both models
+columns<-"data"
+Rank_K8<-data.frame(matrix(nrow = 0, ncol = length(columns)))
+colnames(Rank_K8) <- columns
+
+data$Rank1_K9<-NA
+
+
+# fill in the "Rank1_K8" column for each row using a loop
+for (i in 1:nrow(dat_leg)){
+  column <- theta_8K[i,-1]
+  maintopic <- colnames(column)[which(column==max(column))]
+  data$Rank1_K8[i] <- maintopic
+}
+
+##############################
+theta_8K <- make.dt(model_8K) 
+columns <- "data"
+Rank_K8 <- data.frame(matrix(nrow = 0, ncol = length(columns)))
+colnames(Rank_K8) <- columns
+
+# fill in the "Rank1_K8" column for each row using a loop
+for (i in 1:nrow(Rank_K8)){
+  column <- theta_8K[i,-1]
+  maintopic <- colnames(column)[which(column==max(column))]
+  Rank_K8$Rank1_K8[i] <- maintopic
+}
+
+
+
+
+```
+ 
+ 
+ Including independt variables in my topic model 
+
+```{r}
+Select1 <- selectModel(out$documents, out$vocab, K = 9, verbose = F, prevalence = ~geography+s(year), max.em.its = 120, data = out$meta, runs = 60 )
+
+saveRDS(Select1, file = "Models/Select2.rds")
+Select2<- readRDS("Models/Select2.rds")
+
+
+
+saveRDS(storage, file = "Models/storage.rds")
+storage<- readRDS("Models/storage.rds")
+
+plot.searchK(storage)
+
+
+ semanticCoherence(storage[[1]], out$documents)
+
+
+```
+Evaluate
+
+```{r}
+
+```
+
+
+Understand 
+```{r}
+
+
+```
+
+
+
+Visualize
+```{r}
+
+
+```
+
+
+Extensions
+```{r}
+
+```
+
